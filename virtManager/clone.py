@@ -45,6 +45,7 @@ class _StorageInfo:
         self.cloneable_msg = _get_cloneable_msg(diskinfo)
 
         self._manual_path = None
+        self._reflink_copy = True
         self._generated_path = (diskinfo.new_disk and
                 diskinfo.new_disk.get_source_path())
         if not self._generated_path:
@@ -66,6 +67,8 @@ class _StorageInfo:
 
     def get_target(self):
         return self._orig_disk.target
+    def get_reflink_copy(self):
+        return self._reflink_copy
     def get_orig_disk_path(self):
         return self._orig_disk.get_source_path()
     def get_new_disk_path(self):
@@ -77,6 +80,8 @@ class _StorageInfo:
         self._is_clone_requested = bool(val)
     def set_manual_path(self, val):
         self._manual_path = val
+    def set_reflink_copy(self, val):
+        self._reflink_copy = val
     def set_new_vm_name(self, val):
         if not val or val == self._new_vm_name:
             return
@@ -99,7 +104,8 @@ class _StorageInfo:
         diskinfo.set_clone_requested()
         sparse = True
         newpath = self.get_new_disk_path()
-        diskinfo.set_new_path(newpath, sparse)
+        reflink = self.get_reflink_copy()
+        diskinfo.set_new_path(newpath, sparse, reflink)
 
 
     ###################
@@ -203,6 +209,7 @@ class vmmCloneVM(vmmGObjectUI):
             "on_change_storage_cancel_clicked": self._storage_dialog_close_cb,
             "on_change_storage_ok_clicked": self._storage_dialog_finish_cb,
             "on_change_storage_doclone_toggled": self._storage_dialog_doclone_toggled_cb,
+            "on_change_storage_doclone_reflink_toggled": self._storage_doclone_reflink_toggled,
             "on_change_storage_browse_clicked": self._storage_dialog_browse_cb,
         })
         self.bind_escape_key_close()
@@ -444,6 +451,7 @@ class vmmCloneVM(vmmGObjectUI):
 
         # Sync 'do clone' checkbox, and main dialog combo
         do_clone = self.widget("change-storage-doclone").get_active()
+        reflink = self.widget("change-storage-doclone-reflink").get_active()
         sinfo.set_clone_requested(do_clone)
 
         if not do_clone:
@@ -462,6 +470,7 @@ class vmmCloneVM(vmmGObjectUI):
             if not res:
                 return
 
+        sinfo.set_reflink_copy(true)
         sinfo.set_manual_path(new_path)
         self._storage_dialog_close()
 
@@ -595,6 +604,11 @@ class vmmCloneVM(vmmGObjectUI):
         self._show_storage_window()
 
     def _storage_dialog_doclone_toggled_cb(self, src):
+        do_clone = src.get_active()
+        self.widget("change-storage-new").set_sensitive(do_clone)
+        self.widget("change-storage-browse").set_sensitive(do_clone)
+
+    def _storage_doclone_reflink_toggled(self, src):
         do_clone = src.get_active()
         self.widget("change-storage-new").set_sensitive(do_clone)
         self.widget("change-storage-browse").set_sensitive(do_clone)

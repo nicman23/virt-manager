@@ -125,7 +125,7 @@ def _build_clone_vol_install(orig_disk, new_disk):
     return vol_install
 
 
-def _build_clone_disk(orig_disk, clonepath, allow_create, sparse):
+def _build_clone_disk(orig_disk, clonepath, allow_create, sparse, reflink=False):
     conn = orig_disk.conn
     device = DeviceDisk.DEVICE_DISK
     if not clonepath:
@@ -155,14 +155,14 @@ def _build_clone_disk(orig_disk, clonepath, allow_create, sparse):
                 _("Clone onto existing storage volume is not "
                   "currently supported: '%s'") % new_disk.get_source_path())
 
-    if (orig_disk.get_vol_object() and
+    if (False and orig_disk.get_vol_object() and
         new_disk.wants_storage_creation()):
         vol_install = _build_clone_vol_install(orig_disk, new_disk)
         if not sparse:
             vol_install.allocation = vol_install.capacity
         new_disk.set_vol_install(vol_install)
     elif orig_disk.get_source_path():
-        new_disk.set_local_disk_to_clone(orig_disk, sparse)
+        new_disk.set_local_disk_to_clone(orig_disk, sparse, reflink)
 
     new_disk.validate()
     return new_disk
@@ -246,7 +246,7 @@ class _CloneDiskInfo:
     def set_preserve_requested(self):
         self._set_action(self._ACTION_PRESERVE)
 
-    def set_new_path(self, path, sparse):
+    def set_new_path(self, path, sparse, reflink=False):
         allow_create = not self.is_preserve_requested()
         if allow_create:
             msg = self.get_cloneable_msg()
@@ -255,7 +255,7 @@ class _CloneDiskInfo:
 
         try:
             self.new_disk = Cloner.build_clone_disk(
-                    self.disk, path, allow_create, sparse)
+                    self.disk, path, allow_create, sparse, reflink)
         except Exception as e:
             log.debug("Error setting clone path.", exc_info=True)
             err = (_("Could not use path '%(path)s' for cloning: %(error)s") %
@@ -293,8 +293,8 @@ class Cloner(object):
         return _generate_clone_disk_path(conn, origname, newname, origpath)
 
     @staticmethod
-    def build_clone_disk(orig_disk, clonepath, allow_create, sparse):
-        return _build_clone_disk(orig_disk, clonepath, allow_create, sparse)
+    def build_clone_disk(orig_disk, clonepath, allow_create, sparse, reflink):
+        return _build_clone_disk(orig_disk, clonepath, allow_create, sparse, reflink)
 
     def __init__(self, conn, src_name=None, src_xml=None):
         self.conn = conn
@@ -480,7 +480,7 @@ class Cloner(object):
             # time, libvirt will create it for us
             diskinfo.set_new_path(new_nvram_path, self._sparse)
             diskinfo.raise_error()
-            diskinfo.new_disk.get_vol_install().reflink = self._reflink
+            # diskinfo.new_disk.get_vol_install().reflink = self._reflink
         else:
             # There's no action to perform for this case, so drop it
             self._nvram_diskinfo = None

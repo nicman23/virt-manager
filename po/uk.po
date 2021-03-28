@@ -317,7 +317,7 @@ msgid "New _Path:"
 msgstr "Новий _шлях:"
 
 #: ui/clone.ui:685
-msgid "Create a new disk (c_lone) for the virtual machine"
+msgid "virtCreate a new disk (c_lone) for the virtual machine"
 msgstr "Створити диск (_клонувати) для віртуальної машини"
 
 #: ui/clone.ui:719 ui/createvol.ui:415 ui/fsdetails.ui:202

@@ -340,7 +340,8 @@ class DeviceDisk(Device):
 
     @staticmethod
     def build_vol_install(conn, volname, poolobj, size, sparse,
-                          fmt=None, backing_store=None, backing_format=None):
+                          fmt=None, backing_store=None, backing_format=None,
+                          reflink=False):
         """
         Helper for building a StorageVolume instance to pass to DeviceDisk
         for eventual storage creation.
@@ -720,14 +721,14 @@ class DeviceDisk(Device):
             return
         return setattr(self.source, propname, val)
 
-    def set_local_disk_to_clone(self, disk, sparse):
+    def set_local_disk_to_clone(self, disk, sparse, reflink=False):
         """
         Set a path to manually clone (as in, not through libvirt)
         """
         self._storage_backend = diskbackend.CloneStorageCreator(self.conn,
             self.get_source_path(),
             disk.get_source_path(),
-            disk.get_size(), sparse)
+            disk.get_size(), sparse, reflink)
 
 
     #####################

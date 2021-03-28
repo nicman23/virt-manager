@@ -512,7 +512,7 @@ class CloneStorageCreator(_StorageCreator):
     Many clone scenarios will use libvirt storage APIs, which will use
     the ManagedStorageCreator
     """
-    def __init__(self, conn, output_path, input_path, size, sparse):
+    def __init__(self, conn, output_path, input_path, size, sparse, reflink = False):
         _StorageCreator.__init__(self, conn)
 
         self._path = output_path
@@ -520,6 +520,7 @@ class CloneStorageCreator(_StorageCreator):
         self._input_path = input_path
         self._size = size
         self._sparse = sparse
+        self._reflink= reflink
 
     def get_size(self):
         return self._size
@@ -584,7 +585,6 @@ class CloneStorageCreator(_StorageCreator):
 
         # If a destination file exists and sparse flag is True,
         # this priority takes an existing file.
-
         if (not os.path.exists(self._output_path) and self._sparse):
             clone_block_size = 4096
             sparse = True
@@ -611,26 +611,33 @@ class CloneStorageCreator(_StorageCreator):
             try:
                 src_fd = os.open(self._input_path, os.O_RDONLY)
                 dst_fd = os.open(self._output_path,
-                                 os.O_WRONLY | os.O_CREAT, 0o640)
-
-                i = 0
-                while 1:
-                    l = os.read(src_fd, clone_block_size)
-                    s = len(l)
-                    if s == 0:
-                        meter.end(size_bytes)
-                        break
-                    # check sequence of zeros
-                    if sparse and zeros == l:
-                        os.lseek(dst_fd, s, 1)
-                    else:
-                        b = os.write(dst_fd, l)
-                        if s != b:  # pragma: no cover
-                            meter.end(i)
+                                os.O_WRONLY | os.O_CREAT, 0o640)
+                if (True):
+                    #size = int(self.get_size() * 1024 * 1024 * 1024 * 10)
+                    size = _get_size(self._path)
+                    log.debug(("USING REF {size}", size), exc_info=True)
+                    while size > 0:
+                        ret = os.copy_file_range(src_fd, dst_fd, size)
+                        size -= ret
+                else:
+                    i = 0
+                    while 1:
+                        l = os.read(src_fd, clone_block_size)
+                        s = len(l)
+                        if s == 0:
+                            meter.end(size_bytes)
                             break
-                    i += s
-                    if i < size_bytes:
-                        meter.update(i)
+                        # check sequence of zeros
+                        if sparse and zeros == l:
+                            os.lseek(dst_fd, s, 1)
+                        else:
+                            b = os.write(dst_fd, l)
+                            if s != b:  # pragma: no cover
+                                meter.end(i)
+                                break
+                        i += s
+                        if i < size_bytes:
+                            meter.update(i)
             except OSError as e:  # pragma: no cover
                 log.debug("Error while cloning", exc_info=True)
                 msg = (_("Error cloning diskimage "
