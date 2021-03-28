@@ -112,14 +112,14 @@ def _lookup_vm(conn, name):
         raise e from None
 
 
-def _build_clone_vol_install(orig_disk, new_disk):
+def _build_clone_vol_install(orig_disk, new_disk, reflink):
     # We set a stub size for initial creation
     # set_input_vol will overwrite it
     size = .000001
     sparse = False
     vol_install = DeviceDisk.build_vol_install(
         orig_disk.conn, os.path.basename(new_disk.get_source_path()),
-        new_disk.get_parent_pool(), size, sparse)
+        new_disk.get_parent_pool(), size, sparse, reflink)
     vol_install.set_input_vol(orig_disk.get_vol_object())
 
     return vol_install
@@ -155,9 +155,9 @@ def _build_clone_disk(orig_disk, clonepath, allow_create, sparse, reflink=False)
                 _("Clone onto existing storage volume is not "
                   "currently supported: '%s'") % new_disk.get_source_path())
 
-    if (False and orig_disk.get_vol_object() and
+    if (orig_disk.get_vol_object() and
         new_disk.wants_storage_creation()):
-        vol_install = _build_clone_vol_install(orig_disk, new_disk)
+        vol_install = _build_clone_vol_install(orig_disk, new_disk, reflink)
         if not sparse:
             vol_install.allocation = vol_install.capacity
         new_disk.set_vol_install(vol_install)

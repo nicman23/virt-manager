@@ -369,12 +369,14 @@ class DeviceDisk(Device):
             alloc = 0
         else:
             alloc = cap
-
+        reflink = True
         volinst = StorageVolume(conn)
         volinst.pool = poolobj
         volinst.name = volname
         volinst.capacity = cap
         volinst.allocation = alloc
+        volinst.reflink = reflink
+
         volinst.backing_store = backing_store
         volinst.backing_format = backing_format
 
